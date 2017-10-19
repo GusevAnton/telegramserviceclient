@@ -1,0 +1,3 @@
+com.gusevanton.telegramclientservice.annotation.EnableTelegramLogging=\
+  com.gusevanton.telegramclientservice.configuration.TelegramConfiguration
+  
