@@ -15,6 +15,9 @@ public class ConfigurationProperties {
     @Value("${telegramService.url}")
     private String telegramUrl;
 
+    @Value("${telegramService.enableQueue:true}")
+    private boolean enableQueue;
+
     public String getApplicationName() {
         return applicationName;
     }
@@ -30,5 +33,13 @@ public class ConfigurationProperties {
 
     public void setTelegramUrl(String telegramUrl) {
         this.telegramUrl = telegramUrl;
+    }
+
+    public boolean isEnableQueue() {
+        return enableQueue;
+    }
+
+    public void setEnableQueue(boolean enableQueue) {
+        this.enableQueue = enableQueue;
     }
 }
