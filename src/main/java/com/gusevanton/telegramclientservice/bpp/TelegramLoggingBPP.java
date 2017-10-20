@@ -5,31 +5,26 @@ import com.gusevanton.telegramclientservice.annotation.LoggingTelegram;
 import com.gusevanton.telegramclientservice.dto.ServiceMessage;
 import com.gusevanton.telegramclientservice.dto.ServiceTextMessageObject;
 import com.gusevanton.telegramclientservice.properties.ConfigurationProperties;
+import com.gusevanton.telegramclientservice.utils.RestTemplateWrapper;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.core.env.Environment;
-import org.springframework.web.client.RestTemplate;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
 import java.net.InetAddress;
-import java.net.URI;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.logging.Logger;
 
 /**
  * Created by antongusev on 18.10.17.
  */
 public class TelegramLoggingBPP implements BeanPostProcessor {
 
-    private final static Logger logger = Logger.getLogger("TelegramLoggingBPP");
-
     @Autowired
-    private RestTemplate restTemplate;
+    private RestTemplateWrapper restTemplateWrapper;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -87,11 +82,7 @@ public class TelegramLoggingBPP implements BeanPostProcessor {
                                     } catch (Exception e) {
 
                                     }
-                                    try {
-                                        restTemplate.postForEntity(URI.create(configurationProperties.getTelegramUrl() + "/notify"), serviceMessage, HashMap.class);
-                                    } catch (Exception e) {
-                                        logger.warning("Error on connection initialization with " + configurationProperties.getTelegramUrl() + ".");
-                                    }
+                                    restTemplateWrapper.notifyService(serviceMessage);
                                 }
                             });
                         }
