@@ -43,51 +43,57 @@ public class RestTemplateWrapper {
 
     @PostConstruct
     public void register() {
-        try {
-            this.send.accept(configurationProperties.getTelegramUrl() + "/register", "startup");
-            registered.set(true);
-        } catch (Exception e) {
-            log.warning("Error on connection initialization with " + configurationProperties.getTelegramUrl() + ".");
-        }
-        if (!registered.get()) {
-            ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
-            scheduledExecutorService.schedule(() -> register(), 5, TimeUnit.SECONDS);
-        }
+        Executors.newSingleThreadExecutor().submit(() -> {
+            try {
+                this.send.accept(configurationProperties.getTelegramUrl() + "/register", "startup");
+                registered.set(true);
+            } catch (Exception e) {
+                log.warning("Error on connection initialization with " + configurationProperties.getTelegramUrl() + ".");
+            }
+            if (!registered.get()) {
+                ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+                scheduledExecutorService.schedule(() -> register(), 5, TimeUnit.SECONDS);
+            }
+        });
     }
 
     @PreDestroy
     public void unregister() {
-        if (registered.get()) {
-            try {
-                this.send.accept(configurationProperties.getTelegramUrl() + "/unregister", "shutdown");
-            } catch (Exception e) {
-                log.warning("Error on connection initialization with " + configurationProperties.getTelegramUrl() + ".");
+        Executors.newSingleThreadExecutor().submit(() -> {
+            if (registered.get()) {
+                try {
+                    this.send.accept(configurationProperties.getTelegramUrl() + "/unregister", "shutdown");
+                } catch (Exception e) {
+                    log.warning("Error on connection initialization with " + configurationProperties.getTelegramUrl() + ".");
+                }
             }
-        }
+        });
     }
 
     public void notifyService(ServiceMessage serviceMessage) {
-        if (registered.get()) {
-            try {
-                if (queueService != null) {
-                    while(queueService.size() > 0) {
-                        ServiceMessage polledServiceMessage = queueService.poll();
-                        if (polledServiceMessage != null)
-                            restTemplate.postForEntity(URI.create(configurationProperties.getTelegramUrl() + "/notify"), polledServiceMessage, HashMap.class);
+        Executors.newSingleThreadExecutor().submit(() -> {
+            if (registered.get()) {
+                try {
+                    if (queueService != null) {
+                        while(queueService.size() > 0) {
+                            ServiceMessage polledServiceMessage = queueService.poll();
+                            if (polledServiceMessage != null)
+                                restTemplate.postForEntity(URI.create(configurationProperties.getTelegramUrl() + "/notify"), polledServiceMessage, HashMap.class);
+                        }
                     }
+                    restTemplate.postForEntity(URI.create(configurationProperties.getTelegramUrl() + "/notify"), serviceMessage, HashMap.class);
+                } catch (Exception e) {
+                    log.warning("Error on connection initialization with " + configurationProperties.getTelegramUrl() + ".");
+                    registered.set(false);
+                    ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+                    scheduledExecutorService.schedule(() -> register(), 5, TimeUnit.SECONDS);
+                    if (serviceMessage != null && queueService != null)
+                        queueService.push(serviceMessage);
                 }
-                restTemplate.postForEntity(URI.create(configurationProperties.getTelegramUrl() + "/notify"), serviceMessage, HashMap.class);
-            } catch (Exception e) {
-                log.warning("Error on connection initialization with " + configurationProperties.getTelegramUrl() + ".");
-                registered.set(false);
-                ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
-                scheduledExecutorService.schedule(() -> register(), 5, TimeUnit.SECONDS);
-                if (serviceMessage != null && queueService != null)
-                    queueService.push(serviceMessage);
+            } else if (queueService != null) {
+                queueService.push(serviceMessage);
             }
-        } else if (queueService != null) {
-            queueService.push(serviceMessage);
-        }
+        });
     }
 
     private BiConsumer<String, String> send = (url, actionName) -> {
